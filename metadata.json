@@ -1,0 +1,5 @@
+{
+  "name": "VaultDrive",
+  "description": "A secure, SaaS-style document and note management dashboard using Firebase Authentication, Firestore, and Supabase Storage.",
+  "requestFramePermissions": []
+}

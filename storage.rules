@@ -1,0 +1,10 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Match the path: user_uploads / {user_id} / {filename}
+    match /user_uploads/{uid}/{allPaths=**} {
+      // Only allow access if the authenticated user's ID matches the folder name
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
