@@ -11,6 +11,7 @@ interface OverviewProps {
 
 export const Overview: React.FC<OverviewProps> = ({ user, onNavigate }) => {
   const [fileCount, setFileCount] = useState(0);
+  const [totalUsedBytes, setTotalUsedBytes] = useState(0);
   const [memberCount, setMemberCount] = useState(0);
 
   const isOfflineDemo = user.id === 'offline-demo';
@@ -18,6 +19,7 @@ export const Overview: React.FC<OverviewProps> = ({ user, onNavigate }) => {
   useEffect(() => {
     if (isOfflineDemo) {
       setFileCount(2);
+      setTotalUsedBytes(18 * 1024 * 1024); // 18MB
       setMemberCount(2);
       return;
     }
@@ -25,11 +27,14 @@ export const Overview: React.FC<OverviewProps> = ({ user, onNavigate }) => {
     const fetchCounts = async () => {
       try {
         const [filesResult, membersResult] = await Promise.all([
-          supabase.from('files').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+          supabase.from('files').select('size', { count: 'exact' }).eq('user_id', user.id),
           supabase.from('team_members').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
         ]);
         setFileCount(filesResult.count || 0);
         setMemberCount(membersResult.count || 0);
+
+        const bytes = (filesResult.data as any[])?.reduce((acc, f) => acc + (f.size || 0), 0) || 0;
+        setTotalUsedBytes(bytes);
       } catch (err) {
         console.error("Error fetching counts:", err);
       }
@@ -39,6 +44,7 @@ export const Overview: React.FC<OverviewProps> = ({ user, onNavigate }) => {
   }, [user, isOfflineDemo]);
 
   const isPro = user.email === 'imahinasyon321@gmail.com';
+  const currentMaxBytes = isPro ? 500 * 1024 * 1024 * 1024 : 100 * 1024 * 1024; // 500GB vs 100MB
 
   return (
     <div className="space-y-8">
@@ -69,9 +75,9 @@ export const Overview: React.FC<OverviewProps> = ({ user, onNavigate }) => {
             <span className="font-bold text-gray-900">{fileCount} files</span> stored securely on the cloud.
           </p>
           <div className="w-full bg-gray-100 h-2 rounded-full mb-3 overflow-hidden">
-            <div className="bg-blue-500 h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min((fileCount / (isPro ? 10000 : 5)) * 100, 100)}%` }}></div>
+            <div className="bg-blue-500 h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min((totalUsedBytes / currentMaxBytes) * 100, 100)}%` }}></div>
           </div>
-          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{isPro ? 'Pro Subscription: Active' : 'Demo Limit: 100MB'}</p>
+          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{isPro ? 'Premium Plan: 500GB' : 'Starter Plan: 100MB'}</p>
         </div>
 
         {/* Team Access Card */}

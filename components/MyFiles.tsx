@@ -6,7 +6,8 @@ import { Folder as FolderIcon, FileText, Download, Trash2, Plus, HardDrive, Aler
 import { Modal } from './Modal';
 
 const DEFAULT_MAX_FILES = 10;
-const PRO_MAX_FILES = 10000;
+const DEFAULT_MAX_BYTES = 100 * 1024 * 1024; // 100MB
+const PRO_MAX_BYTES = 500 * 1024 * 1024 * 1024; // 500GB
 const BUCKET_NAME = 'vaultdrive';
 
 const formatBytes = (bytes: number, decimals = 2) => {
@@ -24,9 +25,10 @@ interface MyFilesProps {
 
 export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
   const isPro = user.email === 'imahinasyon321@gmail.com';
-  const currentMaxFiles = isPro ? PRO_MAX_FILES : DEFAULT_MAX_FILES;
+  const currentMaxBytes = isPro ? PRO_MAX_BYTES : DEFAULT_MAX_BYTES;
 
   const [files, setFiles] = useState<FileData[]>([]);
+  const totalUsedBytes = files.reduce((acc, file) => acc + (file.size || 0), 0);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -130,7 +132,9 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
   };
 
   const checkLimitAndOpenUpload = () => {
-    if (files.length >= currentMaxFiles) {
+    if (files.length >= DEFAULT_MAX_FILES && !isPro) {
+      setUpgradeModalOpen(true);
+    } else if (totalUsedBytes >= currentMaxBytes) {
       setUpgradeModalOpen(true);
     } else {
       setUploadModalOpen(true);
@@ -335,7 +339,7 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
           </button>
           <button
             onClick={checkLimitAndOpenUpload}
-            className={`px-4 py-2 text-sm font-medium text-white rounded-lg flex items-center gap-2 transition-colors ${files.length >= currentMaxFiles ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+            className={`px-4 py-2 text-sm font-medium text-white rounded-lg flex items-center gap-2 transition-colors ${(totalUsedBytes >= currentMaxBytes || (files.length >= DEFAULT_MAX_FILES && !isPro)) ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
           >
             <Plus size={16} />
             Add File
@@ -344,17 +348,17 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
       </div>
 
       {/* Usage Bar */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+      <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm transition-all hover:shadow-md">
         <div className="flex justify-between text-sm mb-2">
-          <span className="font-medium text-gray-700">Storage Limit ({isPro ? 'Pro Plan' : 'Free Plan'})</span>
-          <span className={`${files.length >= currentMaxFiles ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
-            {files.length} / {currentMaxFiles} files
+          <span className="font-semibold text-slate-800">Vault Capacity ({isPro ? 'Premium Plan' : 'Starter Plan'})</span>
+          <span className={`${totalUsedBytes >= currentMaxBytes ? 'text-red-600 font-bold' : 'text-slate-500 font-medium'}`}>
+            {formatBytes(totalUsedBytes)} / {formatBytes(currentMaxBytes)}
           </span>
         </div>
-        <div className="w-full bg-gray-100 rounded-full h-2">
+        <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
           <div
-            className={`h-2 rounded-full transition-all duration-500 ${files.length >= currentMaxFiles ? 'bg-red-500' : 'bg-blue-500'}`}
-            style={{ width: `${Math.min((files.length / currentMaxFiles) * 100, 100)}%` }}
+            className={`h-full rounded-full transition-all duration-700 ease-out ${totalUsedBytes >= currentMaxBytes ? 'bg-red-500' : 'bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.4)]'}`}
+            style={{ width: `${Math.min((totalUsedBytes / currentMaxBytes) * 100, 100)}%` }}
           ></div>
         </div>
       </div>
@@ -381,7 +385,7 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
               <HardDrive className="text-gray-400" size={32} />
             </div>
             <h3 className="text-lg font-medium text-gray-900">No files yet</h3>
-            <p className="text-gray-500 mt-1 max-w-sm">Upload documents to safeguard them in your vault. {isPro ? 'You have unlimited storage.' : `Free plan is limited to ${DEFAULT_MAX_FILES} files.`}</p>
+            <p className="text-gray-500 mt-1 max-w-sm">Upload documents to safeguard them in your vault. {isPro ? 'Your Premium Plan includes 500GB of secure storage.' : `Starter plan is limited to ${DEFAULT_MAX_FILES} files.`}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -552,7 +556,7 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
           </div>
           <h4 className="text-xl font-bold text-gray-900 mb-2">Limit Reached</h4>
           <p className="text-gray-600 mb-6">
-            You have reached the {currentMaxFiles}-file limit on the Free Plan. Upgrade to Pro to unlock unlimited storage and team features.
+            You have reached your storage limit on the {isPro ? 'Premium' : 'Starter'} Plan. Upgrade your vault for more space and advanced security features.
           </p>
           <button className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5">
             Upgrade to Pro - $9/mo
