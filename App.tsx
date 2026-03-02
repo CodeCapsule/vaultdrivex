@@ -3,7 +3,6 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { Auth } from './components/Auth';
 import { Dashboard } from './components/Dashboard';
-import { VerifyEmail } from './components/VerifyEmail';
 import { ProductPage } from './components/ProductPage';
 import { SolutionsPage } from './components/SolutionsPage';
 import { PricingPage } from './components/PricingPage';

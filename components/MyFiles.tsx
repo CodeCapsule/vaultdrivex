@@ -5,7 +5,8 @@ import { FileData, Folder } from '../types';
 import { Folder as FolderIcon, FileText, Download, Trash2, Plus, HardDrive, AlertTriangle, RefreshCw, Copy, AlertCircle, Database } from 'lucide-react';
 import { Modal } from './Modal';
 
-const MAX_FILES = 10;
+const DEFAULT_MAX_FILES = 10;
+const PRO_MAX_FILES = 10000;
 const BUCKET_NAME = 'vaultdrive';
 
 const formatBytes = (bytes: number, decimals = 2) => {
@@ -22,6 +23,9 @@ interface MyFilesProps {
 }
 
 export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
+  const isPro = user.email === 'imahinasyon321@gmail.com';
+  const currentMaxFiles = isPro ? PRO_MAX_FILES : DEFAULT_MAX_FILES;
+
   const [files, setFiles] = useState<FileData[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,7 +130,7 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
   };
 
   const checkLimitAndOpenUpload = () => {
-    if (files.length >= MAX_FILES) {
+    if (files.length >= currentMaxFiles) {
       setUpgradeModalOpen(true);
     } else {
       setUploadModalOpen(true);
@@ -331,7 +335,7 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
           </button>
           <button
             onClick={checkLimitAndOpenUpload}
-            className={`px-4 py-2 text-sm font-medium text-white rounded-lg flex items-center gap-2 transition-colors ${files.length >= MAX_FILES ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+            className={`px-4 py-2 text-sm font-medium text-white rounded-lg flex items-center gap-2 transition-colors ${files.length >= currentMaxFiles ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
           >
             <Plus size={16} />
             Add File
@@ -342,15 +346,15 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
       {/* Usage Bar */}
       <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
         <div className="flex justify-between text-sm mb-2">
-          <span className="font-medium text-gray-700">Storage Limit (Free Plan)</span>
-          <span className={`${files.length >= MAX_FILES ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
-            {files.length} / {MAX_FILES} files
+          <span className="font-medium text-gray-700">Storage Limit ({isPro ? 'Pro Plan' : 'Free Plan'})</span>
+          <span className={`${files.length >= currentMaxFiles ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+            {files.length} / {currentMaxFiles} files
           </span>
         </div>
         <div className="w-full bg-gray-100 rounded-full h-2">
           <div
-            className={`h-2 rounded-full transition-all duration-500 ${files.length >= MAX_FILES ? 'bg-red-500' : 'bg-blue-500'}`}
-            style={{ width: `${Math.min((files.length / MAX_FILES) * 100, 100)}%` }}
+            className={`h-2 rounded-full transition-all duration-500 ${files.length >= currentMaxFiles ? 'bg-red-500' : 'bg-blue-500'}`}
+            style={{ width: `${Math.min((files.length / currentMaxFiles) * 100, 100)}%` }}
           ></div>
         </div>
       </div>
@@ -377,7 +381,7 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
               <HardDrive className="text-gray-400" size={32} />
             </div>
             <h3 className="text-lg font-medium text-gray-900">No files yet</h3>
-            <p className="text-gray-500 mt-1 max-w-sm">Upload documents to safeguard them in your vault. Free plan is limited to {MAX_FILES} files.</p>
+            <p className="text-gray-500 mt-1 max-w-sm">Upload documents to safeguard them in your vault. {isPro ? 'You have unlimited storage.' : `Free plan is limited to ${DEFAULT_MAX_FILES} files.`}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -548,7 +552,7 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
           </div>
           <h4 className="text-xl font-bold text-gray-900 mb-2">Limit Reached</h4>
           <p className="text-gray-600 mb-6">
-            You have reached the {MAX_FILES}-file limit on the Free Plan. Upgrade to Pro to unlock unlimited storage and team features.
+            You have reached the {currentMaxFiles}-file limit on the Free Plan. Upgrade to Pro to unlock unlimited storage and team features.
           </p>
           <button className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5">
             Upgrade to Pro - $9/mo

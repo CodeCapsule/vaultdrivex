@@ -38,6 +38,8 @@ export const Overview: React.FC<OverviewProps> = ({ user, onNavigate }) => {
     fetchCounts();
   }, [user, isOfflineDemo]);
 
+  const isPro = user.email === 'imahinasyon321@gmail.com';
+
   return (
     <div className="space-y-8">
 
@@ -67,9 +69,9 @@ export const Overview: React.FC<OverviewProps> = ({ user, onNavigate }) => {
             <span className="font-bold text-gray-900">{fileCount} files</span> stored securely on the cloud.
           </p>
           <div className="w-full bg-gray-100 h-2 rounded-full mb-3 overflow-hidden">
-            <div className="bg-blue-500 h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min((fileCount / 5) * 100, 100)}%` }}></div>
+            <div className="bg-blue-500 h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min((fileCount / (isPro ? 10000 : 5)) * 100, 100)}%` }}></div>
           </div>
-          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Demo Limit: 100MB</p>
+          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{isPro ? 'Pro Subscription: Active' : 'Demo Limit: 100MB'}</p>
         </div>
 
         {/* Team Access Card */}
