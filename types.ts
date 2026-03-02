@@ -1,32 +1,36 @@
 export interface Folder {
   id: string;
+  user_id: string;
   name: string;
-  createdAt: any;
+  created_at: string;
 }
 
 export interface FileData {
   id: string;
+  user_id: string;
   name: string;
   size: number;
   type: string;
-  downloadURL: string;
-  storagePath: string;
-  folderId?: string;
-  createdAt: any;
+  download_url: string;
+  storage_path: string;
+  provider?: string;
+  created_at: string;
 }
 
 export interface Note {
   id: string;
+  user_id: string;
   title: string;
   content: string;
-  createdAt: any;
+  created_at: string;
 }
 
 export interface TeamMember {
   id: string;
+  user_id: string;
   name: string;
   role: string;
-  createdAt: any;
+  created_at: string;
 }
 
 export enum ViewState {

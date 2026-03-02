@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import { User } from '@supabase/supabase-js';
+import { supabase } from '../supabase';
 import { ViewState } from '../types';
 import { ShieldCheck, HardDrive, Users, ArrowRight, Sparkles } from 'lucide-react';
-import { User } from 'firebase/auth';
 
 interface OverviewProps {
   user: User;
@@ -14,37 +13,37 @@ export const Overview: React.FC<OverviewProps> = ({ user, onNavigate }) => {
   const [fileCount, setFileCount] = useState(0);
   const [memberCount, setMemberCount] = useState(0);
 
-  const isOfflineDemo = user.uid === 'offline-demo';
+  const isOfflineDemo = user.id === 'offline-demo';
 
   useEffect(() => {
     if (isOfflineDemo) {
-        setFileCount(2);
-        setMemberCount(2);
-        return;
+      setFileCount(2);
+      setMemberCount(2);
+      return;
     }
 
-    // Listen to file count
-    const unsubFiles = onSnapshot(collection(db, `users/${user.uid}/files`), (snap) => {
-      setFileCount(snap.size);
-    });
-
-    // Listen to team members count
-    const unsubTeam = onSnapshot(collection(db, `users/${user.uid}/teamMembers`), (snap) => {
-      setMemberCount(snap.size);
-    });
-
-    return () => {
-      unsubFiles();
-      unsubTeam();
+    const fetchCounts = async () => {
+      try {
+        const [filesResult, membersResult] = await Promise.all([
+          supabase.from('files').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+          supabase.from('team_members').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+        ]);
+        setFileCount(filesResult.count || 0);
+        setMemberCount(membersResult.count || 0);
+      } catch (err) {
+        console.error("Error fetching counts:", err);
+      }
     };
+
+    fetchCounts();
   }, [user, isOfflineDemo]);
 
   return (
     <div className="space-y-8">
-      
+
       {/* Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        
+
         {/* Vault Status Card */}
         <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
           <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mb-6 text-emerald-600 border border-emerald-100">
@@ -82,7 +81,7 @@ export const Overview: React.FC<OverviewProps> = ({ user, onNavigate }) => {
           <p className="text-sm text-gray-500 mb-8 leading-relaxed">
             <span className="font-bold text-gray-900">{memberCount} active members</span> collaborating.
           </p>
-          <button 
+          <button
             onClick={() => onNavigate(ViewState.TEAM)}
             className="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1"
           >
@@ -93,24 +92,24 @@ export const Overview: React.FC<OverviewProps> = ({ user, onNavigate }) => {
 
       {/* Welcome Banner */}
       <div className="bg-slate-900 rounded-3xl p-10 md:p-12 text-white relative overflow-hidden shadow-2xl">
-         {/* Background Glow */}
+        {/* Background Glow */}
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
 
         <div className="relative z-10">
           <div className="inline-flex items-center gap-2 mb-6 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-             <Sparkles size={14} />
-             <span className="text-xs font-bold tracking-widest uppercase">Interactive Demo</span>
+            <Sparkles size={14} />
+            <span className="text-xs font-bold tracking-widest uppercase">Interactive Demo</span>
           </div>
-          
+
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Welcome to VaultDrive 2.0</h2>
-          
+
           <p className="text-slate-400 text-lg mb-10 max-w-2xl leading-relaxed">
-            Feel free to add files, create folders, and manage team members. <br/>
-            <span className="text-slate-300 font-semibold">Note:</span> Data is stored in your browser's memory and will reset on refresh.
+            Feel free to add files, create folders, and manage team members. <br />
+            <span className="text-slate-300 font-semibold">Note:</span> Data is stored in your Supabase database and persists across sessions.
           </p>
-          
-          <button 
+
+          <button
             onClick={() => onNavigate(ViewState.FILES)}
             className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-xl shadow-emerald-900/20 transition-all hover:scale-105 flex items-center gap-2.5"
           >

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from './firebase';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from './supabase';
 import { Auth } from './components/Auth';
 import { Dashboard } from './components/Dashboard';
 import { VerifyEmail } from './components/VerifyEmail';
@@ -19,65 +19,47 @@ const App: React.FC = () => {
   const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      // If we are in offline demo mode, ignore firebase auth updates (which might be null)
-      if (isOfflineMode) return;
-      
-      setUser(currentUser);
-      setAuthLoading(false);
-      // Determine initial view based on auth state
-      if (currentUser) {
-        if (!currentUser.emailVerified && !currentUser.isAnonymous) {
-          // Stay on landing/verify logic will handle render
-          setView('landing'); 
-        } else {
-           // Default to landing, user can go to dashboard
-           setView('landing'); 
-        }
-      } else {
-        setView('landing');
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!isOfflineMode) {
+        setUser(session?.user ?? null);
+        setAuthLoading(false);
       }
     });
 
-    return () => unsubscribe();
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (isOfflineMode) return;
+        setUser(session?.user ?? null);
+        setAuthLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, [isOfflineMode]);
 
-  const handleVerificationCheck = async () => {
-    if (auth.currentUser) {
-      try {
-        await auth.currentUser.reload();
-        setUser({ ...auth.currentUser } as User); 
-      } catch (e) {
-        console.error("Error reloading user:", e);
-      }
-    }
-  };
-
   const handleAuthModalOpen = () => {
-      if (view !== 'landing') {
-          setView('landing');
-      }
-      setShowAuthModal(true);
+    if (view !== 'landing') {
+      setView('landing');
+    }
+    setShowAuthModal(true);
   };
 
   const handleOfflineDemo = () => {
     setIsOfflineMode(true);
     // Create a mock user object for offline demo
     const mockUser = {
-        uid: 'offline-demo',
-        email: 'demo@vaultdrive.com',
-        displayName: 'Demo User',
-        emailVerified: true,
-        isAnonymous: true,
-        photoURL: null,
-        phoneNumber: null,
-        providerId: 'firebase',
-        metadata: { 
-            creationTime: new Date().toISOString(), 
-            lastSignInTime: new Date().toISOString() 
-        }
+      id: 'offline-demo',
+      email: 'demo@vaultdrive.com',
+      user_metadata: {
+        full_name: 'Demo User',
+      },
+      app_metadata: {},
+      aud: 'authenticated',
+      created_at: new Date().toISOString(),
     } as unknown as User;
-    
+
     setUser(mockUser);
     setView('dashboard');
     setShowAuthModal(false);
@@ -95,36 +77,36 @@ const App: React.FC = () => {
 
   if (view === 'support') {
     return (
-        <SupportPage
-          user={user}
-          onNavigateToDashboard={() => setView('dashboard')}
-          onNavigateToHome={() => setView('landing')}
-          onNavigateToProduct={() => setView('product')}
-          onNavigateToSolutions={() => setView('solutions')}
-          onNavigateToPricing={() => setView('pricing')}
-          onAuthModalOpen={() => {
-              setView('landing');
-              setShowAuthModal(true);
-          }}
-        />
+      <SupportPage
+        user={user}
+        onNavigateToDashboard={() => setView('dashboard')}
+        onNavigateToHome={() => setView('landing')}
+        onNavigateToProduct={() => setView('product')}
+        onNavigateToSolutions={() => setView('solutions')}
+        onNavigateToPricing={() => setView('pricing')}
+        onAuthModalOpen={() => {
+          setView('landing');
+          setShowAuthModal(true);
+        }}
+      />
     );
   }
 
   if (view === 'pricing') {
-      return (
-          <PricingPage
-            user={user}
-            onNavigateToDashboard={() => setView('dashboard')}
-            onNavigateToHome={() => setView('landing')}
-            onNavigateToProduct={() => setView('product')}
-            onNavigateToSolutions={() => setView('solutions')}
-            onNavigateToSupport={() => setView('support')}
-            onAuthModalOpen={() => {
-                setView('landing');
-                setShowAuthModal(true);
-            }}
-          />
-      );
+    return (
+      <PricingPage
+        user={user}
+        onNavigateToDashboard={() => setView('dashboard')}
+        onNavigateToHome={() => setView('landing')}
+        onNavigateToProduct={() => setView('product')}
+        onNavigateToSolutions={() => setView('solutions')}
+        onNavigateToSupport={() => setView('support')}
+        onAuthModalOpen={() => {
+          setView('landing');
+          setShowAuthModal(true);
+        }}
+      />
+    );
   }
 
   if (view === 'solutions') {
@@ -137,8 +119,8 @@ const App: React.FC = () => {
         onNavigateToPricing={() => setView('pricing')}
         onNavigateToSupport={() => setView('support')}
         onAuthModalOpen={() => {
-            setView('landing');
-            setShowAuthModal(true);
+          setView('landing');
+          setShowAuthModal(true);
         }}
       />
     );
@@ -146,52 +128,45 @@ const App: React.FC = () => {
 
   if (view === 'product') {
     return (
-      <ProductPage 
-        user={user} 
-        onNavigateToDashboard={() => setView('dashboard')} 
+      <ProductPage
+        user={user}
+        onNavigateToDashboard={() => setView('dashboard')}
         onNavigateToHome={() => setView('landing')}
         onNavigateToSolutions={() => setView('solutions')}
         onNavigateToPricing={() => setView('pricing')}
         onNavigateToSupport={() => setView('support')}
         onAuthModalOpen={() => {
-            setView('landing');
-            setShowAuthModal(true);
+          setView('landing');
+          setShowAuthModal(true);
         }}
       />
     );
   }
 
   if (view === 'dashboard' && user) {
-     if (!user.emailVerified && !user.isAnonymous) {
-         return <VerifyEmail email={user.email} onVerified={handleVerificationCheck} />;
-     }
-     return (
-        <Dashboard 
-            user={user}
-            onNavigateToProduct={() => setView('product')} 
-            onNavigateToSolutions={() => setView('solutions')}
-            onNavigateToPricing={() => setView('pricing')}
-            onNavigateToSupport={() => setView('support')}
-        />
-     );
-  }
-
-  if (user && !user.emailVerified && !user.isAnonymous) {
-    return <VerifyEmail email={user.email} onVerified={handleVerificationCheck} />;
-  }
-
-  // Default: Landing / Auth
-  return (
-    <Auth 
-        currentUser={user} 
-        onNavigateToDashboard={() => setView('dashboard')} 
+    return (
+      <Dashboard
+        user={user}
         onNavigateToProduct={() => setView('product')}
         onNavigateToSolutions={() => setView('solutions')}
         onNavigateToPricing={() => setView('pricing')}
         onNavigateToSupport={() => setView('support')}
-        autoOpenModal={showAuthModal}
-        onModalClose={() => setShowAuthModal(false)}
-        onRunOfflineDemo={handleOfflineDemo}
+      />
+    );
+  }
+
+  // Default: Landing / Auth
+  return (
+    <Auth
+      currentUser={user}
+      onNavigateToDashboard={() => setView('dashboard')}
+      onNavigateToProduct={() => setView('product')}
+      onNavigateToSolutions={() => setView('solutions')}
+      onNavigateToPricing={() => setView('pricing')}
+      onNavigateToSupport={() => setView('support')}
+      autoOpenModal={showAuthModal}
+      onModalClose={() => setShowAuthModal(false)}
+      onRunOfflineDemo={handleOfflineDemo}
     />
   );
 };

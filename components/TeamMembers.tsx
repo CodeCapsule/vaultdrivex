@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { User } from '@supabase/supabase-js';
+import { supabase } from '../supabase';
 import { TeamMember } from '../types';
 import { Plus, Users, User as UserIcon, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Modal } from './Modal';
-import { User } from 'firebase/auth';
 
 interface TeamMembersProps {
-    user: User;
+  user: User;
 }
 
 export const TeamMembers: React.FC<TeamMembersProps> = ({ user }) => {
@@ -19,63 +18,74 @@ export const TeamMembers: React.FC<TeamMembersProps> = ({ user }) => {
   const [role, setRole] = useState('');
   const [retryTrigger, setRetryTrigger] = useState(0);
 
-  const isOfflineDemo = user.uid === 'offline-demo';
+  const isOfflineDemo = user.id === 'offline-demo';
 
-  useEffect(() => {
+  const fetchMembers = async () => {
     setLoading(true);
     setError(null);
 
     if (isOfflineDemo) {
-        setMembers([
-            { id: '1', name: 'Alice Smith', role: 'Admin', createdAt: new Date() },
-            { id: '2', name: 'Bob Johnson', role: 'Editor', createdAt: new Date() }
-        ]);
-        setLoading(false);
-        return;
+      setMembers([
+        { id: '1', user_id: 'offline-demo', name: 'Alice Smith', role: 'Admin', created_at: new Date().toISOString() },
+        { id: '2', user_id: 'offline-demo', name: 'Bob Johnson', role: 'Editor', created_at: new Date().toISOString() }
+      ]);
+      setLoading(false);
+      return;
     }
 
-    const q = query(collection(db, `users/${user.uid}/teamMembers`), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setMembers(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as TeamMember)));
-      setLoading(false);
-      setError(null);
-    }, (err) => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('team_members')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (fetchError) throw fetchError;
+      setMembers(data || []);
+    } catch (err: any) {
       console.error(err);
-      setError("Failed to load team members. " + err.message);
+      setError("Failed to load team members. " + (err.message || ''));
+    } finally {
       setLoading(false);
-    });
-    return () => unsubscribe();
+    }
+  };
+
+  useEffect(() => {
+    fetchMembers();
   }, [user, retryTrigger, isOfflineDemo]);
 
   const handleAddMember = async () => {
     if (!name.trim()) return;
-    
-    if (isOfflineDemo) {
-        const newMember = {
-            id: Math.random().toString(),
-            name,
-            role: role || 'Member',
-            createdAt: new Date()
-        };
-        setMembers(prev => [newMember, ...prev]);
-        setName('');
-        setRole('');
-        setIsModalOpen(false);
-        return;
-    }
 
-    try {
-      await addDoc(collection(db, `users/${user.uid}/teamMembers`), {
+    if (isOfflineDemo) {
+      const newMember: TeamMember = {
+        id: Math.random().toString(),
+        user_id: 'offline-demo',
         name,
         role: role || 'Member',
-        createdAt: serverTimestamp()
-      });
+        created_at: new Date().toISOString()
+      };
+      setMembers(prev => [newMember, ...prev]);
       setName('');
       setRole('');
       setIsModalOpen(false);
-    } catch (e) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('team_members').insert({
+        user_id: user.id,
+        name,
+        role: role || 'Member'
+      });
+      if (error) throw error;
+      setName('');
+      setRole('');
+      setIsModalOpen(false);
+      fetchMembers(); // Refresh
+    } catch (e: any) {
       console.error(e);
-      alert("Failed to add member");
+      alert("Failed to add member: " + (e.message || ''));
     }
   };
 
@@ -87,7 +97,7 @@ export const TeamMembers: React.FC<TeamMembersProps> = ({ user }) => {
         </div>
         <h3 className="text-lg font-bold text-red-800">Connection Error</h3>
         <p className="text-red-700 max-w-md mb-2">{error}</p>
-        <button 
+        <button
           onClick={() => setRetryTrigger(c => c + 1)}
           className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
         >
@@ -100,12 +110,12 @@ export const TeamMembers: React.FC<TeamMembersProps> = ({ user }) => {
 
   return (
     <div className="space-y-6">
-       <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Team Members</h2>
           <p className="text-sm text-gray-500 mt-1">Collaborate with your organization.</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsModalOpen(true)}
           className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
         >
@@ -169,15 +179,15 @@ export const TeamMembers: React.FC<TeamMembersProps> = ({ user }) => {
         title="Add Team Member"
         footer={
           <>
-             <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
-             <button onClick={handleAddMember} className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Add Member</button>
+            <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+            <button onClick={handleAddMember} className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Add Member</button>
           </>
         }
       >
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <input 
+            <input
               value={name}
               onChange={e => setName(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -186,7 +196,7 @@ export const TeamMembers: React.FC<TeamMembersProps> = ({ user }) => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-            <select 
+            <select
               value={role}
               onChange={e => setRole(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"

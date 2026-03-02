@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 import { FileData, Folder } from '../types';
 import { Folder as FolderIcon, FileText, Download, Trash2, Plus, HardDrive, AlertTriangle, RefreshCw, Copy, AlertCircle, Database } from 'lucide-react';
 import { Modal } from './Modal';
-import { User } from 'firebase/auth';
 
-const MAX_FILES = 10; // Increased limit for Supabase demo
+const MAX_FILES = 10;
 const BUCKET_NAME = 'vaultdrive';
 
 const formatBytes = (bytes: number, decimals = 2) => {
@@ -20,7 +18,7 @@ const formatBytes = (bytes: number, decimals = 2) => {
 };
 
 interface MyFilesProps {
-    user: User;
+  user: User;
 }
 
 export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
@@ -28,8 +26,8 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [retryTrigger, setRetryTrigger] = useState(0); 
-  
+  const [retryTrigger, setRetryTrigger] = useState(0);
+
   // Modals
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
   const [isFolderModalOpen, setFolderModalOpen] = useState(false);
@@ -42,68 +40,50 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const isOfflineDemo = user.uid === 'offline-demo';
+  const isOfflineDemo = user.id === 'offline-demo';
 
-  useEffect(() => {
+  // Fetch files and folders
+  const fetchData = async () => {
     setLoading(true);
     setError(null);
 
-    // OFFLINE MODE
     if (isOfflineDemo) {
-        setFiles([
-            { id: '1', name: 'Demo_Report.pdf', size: 2400000, type: 'application/pdf', downloadURL: '#', storagePath: '', createdAt: new Date() },
-            { id: '2', name: 'Project_Assets.zip', size: 15600000, type: 'application/zip', downloadURL: '#', storagePath: '', createdAt: new Date() }
-        ]);
-        setFolders([
-            { id: 'f1', name: 'Work Projects', createdAt: new Date() },
-            { id: 'f2', name: 'Personal', createdAt: new Date() }
-        ]);
-        setLoading(false);
-        return;
+      setFiles([
+        { id: '1', user_id: 'offline-demo', name: 'Demo_Report.pdf', size: 2400000, type: 'application/pdf', download_url: '#', storage_path: '', created_at: new Date().toISOString() },
+        { id: '2', user_id: 'offline-demo', name: 'Project_Assets.zip', size: 15600000, type: 'application/zip', download_url: '#', storage_path: '', created_at: new Date().toISOString() }
+      ]);
+      setFolders([
+        { id: 'f1', user_id: 'offline-demo', name: 'Work Projects', created_at: new Date().toISOString() },
+        { id: 'f2', user_id: 'offline-demo', name: 'Personal', created_at: new Date().toISOString() }
+      ]);
+      setLoading(false);
+      return;
     }
 
-    // FIREBASE MODE
-    const filesRef = collection(db, `users/${user.uid}/files`);
-    const foldersRef = collection(db, `users/${user.uid}/folders`);
+    try {
+      const [filesResult, foldersResult] = await Promise.all([
+        supabase.from('files').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('folders').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+      ]);
 
-    const qFiles = query(filesRef, orderBy('createdAt', 'desc'));
-    const qFolders = query(foldersRef, orderBy('createdAt', 'desc'));
+      if (filesResult.error) throw filesResult.error;
+      if (foldersResult.error) throw foldersResult.error;
 
-    const unsubFiles = onSnapshot(qFiles, (snapshot) => {
-      setFiles(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FileData)));
+      setFiles(filesResult.data || []);
+      setFolders(foldersResult.data || []);
+    } catch (err: any) {
+      console.error("Error fetching data:", err);
+      setError(err.message || "Failed to load files.");
+    } finally {
       setLoading(false);
-      setError(null); 
-    }, (err) => {
-      console.error("Files Listener Error:", err);
-      if (err.code === 'permission-denied') {
-        setError("Missing or insufficient permissions.");
-      } else {
-        setError(err.message);
-      }
-      setLoading(false);
-    });
+    }
+  };
 
-    const unsubFolders = onSnapshot(qFolders, (snapshot) => {
-      setFolders(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Folder)));
-    }, (err) => {
-      console.error("Folders Listener Error:", err);
-    });
-
-    return () => {
-      unsubFiles();
-      unsubFolders();
-    };
+  useEffect(() => {
+    fetchData();
   }, [user, retryTrigger, isOfflineDemo]);
 
   const [isTestingConnection, setIsTestingConnection] = useState(false);
-
-  useEffect(() => {
-    // Check if Supabase is properly configured
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    if (!url || url.includes('placeholder')) {
-      setErrorMsg("Supabase configuration missing. Please ensure VITE_SUPABASE_URL is set in your environment.");
-    }
-  }, []);
 
   const testSupabaseConnection = async () => {
     setIsTestingConnection(true);
@@ -118,24 +98,27 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
       setIsTestingConnection(false);
     }
   };
+
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
-    
+
     if (isOfflineDemo) {
-        const newFolder = { id: Math.random().toString(), name: newFolderName, createdAt: new Date() };
-        setFolders(prev => [newFolder, ...prev]);
-        setNewFolderName('');
-        setFolderModalOpen(false);
-        return;
+      const newFolder: Folder = { id: Math.random().toString(), user_id: 'offline-demo', name: newFolderName, created_at: new Date().toISOString() };
+      setFolders(prev => [newFolder, ...prev]);
+      setNewFolderName('');
+      setFolderModalOpen(false);
+      return;
     }
 
     try {
-      await addDoc(collection(db, `users/${user.uid}/folders`), {
-        name: newFolderName,
-        createdAt: serverTimestamp()
+      const { error } = await supabase.from('folders').insert({
+        user_id: user.id,
+        name: newFolderName
       });
+      if (error) throw error;
       setNewFolderName('');
       setFolderModalOpen(false);
+      fetchData(); // Refresh
     } catch (error: any) {
       console.error("Error creating folder:", error);
       alert("Error creating folder: " + error.message);
@@ -152,8 +135,7 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
 
   const handleUploadFile = async () => {
     if (!selectedFile) return;
-    
-    // Reset state
+
     setErrorMsg('');
     setUploadProgress(0);
     setIsUploading(true);
@@ -179,39 +161,33 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
     }, 100);
 
     if (isOfflineDemo) {
-        // Simulate upload
-        setTimeout(() => {
-            cleanup();
-            const newFile: FileData = {
-                id: Math.random().toString(),
-                name: selectedFile.name,
-                size: selectedFile.size,
-                type: selectedFile.type,
-                downloadURL: '#',
-                storagePath: '',
-                createdAt: new Date()
-            };
-            setFiles(prev => [newFile, ...prev]);
-            setUploadModalOpen(false);
-            setSelectedFile(null);
-            setUploadProgress(0);
-        }, 1500);
-        return;
+      setTimeout(() => {
+        cleanup();
+        const newFile: FileData = {
+          id: Math.random().toString(),
+          user_id: 'offline-demo',
+          name: selectedFile.name,
+          size: selectedFile.size,
+          type: selectedFile.type,
+          download_url: '#',
+          storage_path: '',
+          created_at: new Date().toISOString()
+        };
+        setFiles(prev => [newFile, ...prev]);
+        setUploadModalOpen(false);
+        setSelectedFile(null);
+        setUploadProgress(0);
+      }, 1500);
+      return;
     }
 
     try {
-      if (!user?.uid) throw new Error("User not authenticated.");
-      
-      console.log("Starting upload process for:", selectedFile.name);
-      console.log("File size:", selectedFile.size, "Type:", selectedFile.type);
-      
+      if (!user?.id) throw new Error("User not authenticated.");
+
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${user.uid}/${fileName}`;
+      const filePath = `${user.id}/${fileName}`;
 
-      console.log("Uploading to Supabase bucket:", BUCKET_NAME);
-      console.log("Target Path:", filePath);
-      
       // 1. Upload to Supabase Storage
       const { data, error: uploadError } = await supabase.storage
         .from(BUCKET_NAME)
@@ -221,79 +197,79 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
         });
 
       if (uploadError) {
-        console.error("Supabase Upload Error:", uploadError);
-        
         if (uploadError.message.includes('bucket not found')) {
           throw new Error(`Bucket "${BUCKET_NAME}" not found. Please create it in Supabase Storage.`);
         }
-        
         if (uploadError.message.toLowerCase().includes('policy') || (uploadError as any).status === 403 || (uploadError as any).status === 401) {
           throw new Error("Access Denied: Check your Supabase Storage Policies (RLS). You need an 'INSERT' policy for the '" + BUCKET_NAME + "' bucket.");
         }
-        
         throw uploadError;
       }
 
-      console.log("Upload successful, getting public URL...");
-      
       // 2. Get Public URL
       const { data: { publicUrl } } = supabase.storage
         .from(BUCKET_NAME)
         .getPublicUrl(filePath);
 
-      console.log("Saving metadata to Firestore...");
-
-      // 3. Save Metadata to Firestore
-      await addDoc(collection(db, `users/${user.uid}/files`), {
+      // 3. Save Metadata to Supabase DB
+      const { error: dbError } = await supabase.from('files').insert({
+        user_id: user.id,
         name: selectedFile.name,
         size: selectedFile.size,
         type: selectedFile.type,
-        storagePath: filePath,
-        downloadURL: publicUrl,
-        createdAt: serverTimestamp(),
+        storage_path: filePath,
+        download_url: publicUrl,
         provider: 'supabase'
       });
 
+      if (dbError) throw dbError;
+
       cleanup();
       setUploadProgress(100);
-      
+
       setTimeout(() => {
         setUploadModalOpen(false);
         setSelectedFile(null);
         setUploadProgress(0);
+        fetchData(); // Refresh
       }, 500);
 
     } catch (err: any) {
       cleanup();
       console.error("Final Upload Error:", err);
-      
+
       let finalMsg = err.message || "Upload failed.";
       if (finalMsg.includes("Failed to fetch")) {
         finalMsg = "Connection failed. Please check your Supabase URL and ensure your internet is working.";
       }
-      
+
       setErrorMsg(finalMsg);
     }
   };
 
   const handleDeleteFile = async (file: FileData) => {
     if (isOfflineDemo) {
-        setFiles(prev => prev.filter(f => f.id !== file.id));
-        return;
+      setFiles(prev => prev.filter(f => f.id !== file.id));
+      return;
     }
 
     try {
       // Delete from Supabase Storage
-      const { error: deleteError } = await supabase.storage
-        .from(BUCKET_NAME)
-        .remove([file.storagePath]);
+      if (file.storage_path) {
+        const { error: deleteError } = await supabase.storage
+          .from(BUCKET_NAME)
+          .remove([file.storage_path]);
 
-      if (deleteError) {
-        console.warn("Supabase storage delete warning:", deleteError);
+        if (deleteError) {
+          console.warn("Supabase storage delete warning:", deleteError);
+        }
       }
 
-      // Delete from Firestore
-      await deleteDoc(doc(db, `users/${user.uid}/files`, file.id));
+      // Delete from Supabase DB
+      const { error: dbError } = await supabase.from('files').delete().eq('id', file.id);
+      if (dbError) throw dbError;
+
+      fetchData(); // Refresh
     } catch (err) {
       console.error("Failed to delete", err);
       alert("Failed to delete file. Check console for details.");
@@ -309,47 +285,10 @@ export const MyFiles: React.FC<MyFilesProps> = ({ user }) => {
           </div>
           <div className="flex-1">
             <h3 className="text-lg font-bold text-gray-900 mb-2">Connection Error</h3>
-            <p className="text-gray-600 mb-4">
-              {error === "Missing or insufficient permissions." 
-                ? "We couldn't load your files. This is usually because the **Firestore Security Rules** have not been set up yet."
-                : `Error: ${error}`}
-            </p>
-            
-            {error === "Missing or insufficient permissions." && (
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4">
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">How to fix:</p>
-                <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
-                  <li>Go to Firebase Console &rarr; Firestore Database &rarr; Rules</li>
-                  <li>Delete the existing rules.</li>
-                  <li>Paste the code below:</li>
-                </ol>
-                <div className="mt-3 relative group">
-                  <pre className="bg-gray-900 text-gray-100 p-3 rounded text-xs overflow-x-auto font-mono">
-{`rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      match /{allSubcollections=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-    }
-  }
-}`}
-                  </pre>
-                  <button 
-                    onClick={() => navigator.clipboard.writeText(`rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /users/{userId} {\n      allow read, write: if request.auth != null && request.auth.uid == userId;\n      match /{allSubcollections=**} {\n        allow read, write: if request.auth != null && request.auth.uid == userId;\n      }\n    }\n  }\n}`)}
-                    className="absolute top-2 right-2 p-1.5 bg-gray-700 text-white rounded hover:bg-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Copy to clipboard"
-                  >
-                    <Copy size={14} />
-                  </button>
-                </div>
-              </div>
-            )}
+            <p className="text-gray-600 mb-4">{error}</p>
 
             <div className="flex gap-3">
-              <button 
+              <button
                 onClick={() => setRetryTrigger(c => c + 1)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
               >
@@ -357,7 +296,7 @@ service cloud.firestore {
                 Retry Connection
               </button>
               <span className="text-xs text-gray-400 flex items-center">
-                User ID: {user?.uid || 'Not signed in'}
+                User ID: {user?.id || 'Not signed in'}
               </span>
             </div>
           </div>
@@ -375,7 +314,7 @@ service cloud.firestore {
           <p className="text-sm text-gray-500 mt-1">Manage your documents and assets.</p>
         </div>
         <div className="flex gap-3">
-          <button 
+          <button
             onClick={testSupabaseConnection}
             disabled={isTestingConnection}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
@@ -383,14 +322,14 @@ service cloud.firestore {
             {isTestingConnection ? <RefreshCw size={16} className="animate-spin" /> : <Database size={16} />}
             Test Connection
           </button>
-          <button 
+          <button
             onClick={() => setFolderModalOpen(true)}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
           >
             <FolderIcon size={16} />
             New Folder
           </button>
-          <button 
+          <button
             onClick={checkLimitAndOpenUpload}
             className={`px-4 py-2 text-sm font-medium text-white rounded-lg flex items-center gap-2 transition-colors ${files.length >= MAX_FILES ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
           >
@@ -409,8 +348,8 @@ service cloud.firestore {
           </span>
         </div>
         <div className="w-full bg-gray-100 rounded-full h-2">
-          <div 
-            className={`h-2 rounded-full transition-all duration-500 ${files.length >= MAX_FILES ? 'bg-red-500' : 'bg-blue-500'}`} 
+          <div
+            className={`h-2 rounded-full transition-all duration-500 ${files.length >= MAX_FILES ? 'bg-red-500' : 'bg-blue-500'}`}
             style={{ width: `${Math.min((files.length / MAX_FILES) * 100, 100)}%` }}
           ></div>
         </div>
@@ -438,7 +377,7 @@ service cloud.firestore {
               <HardDrive className="text-gray-400" size={32} />
             </div>
             <h3 className="text-lg font-medium text-gray-900">No files yet</h3>
-            <p className="text-gray-500 mt-1 max-w-sm">Upload documents to safeguard them in your vault. Free plan is limited to 5 files.</p>
+            <p className="text-gray-500 mt-1 max-w-sm">Upload documents to safeguard them in your vault. Free plan is limited to {MAX_FILES} files.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -462,16 +401,16 @@ service cloud.firestore {
                     <td className="px-6 py-4 truncate max-w-xs text-gray-500">{file.type || 'Unknown'}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-3">
-                        <a 
-                          href={file.downloadURL} 
-                          target="_blank" 
+                        <a
+                          href={file.download_url}
+                          target="_blank"
                           rel="noreferrer"
                           className={`text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 transition-colors ${isOfflineDemo ? 'pointer-events-none opacity-50' : ''}`}
                           title={isOfflineDemo ? "Not available in offline demo" : "Download"}
                         >
                           <Download size={18} />
                         </a>
-                        <button 
+                        <button
                           onClick={() => handleDeleteFile(file)}
                           className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors"
                           title="Delete"
@@ -491,9 +430,9 @@ service cloud.firestore {
       {/* --- Modals --- */}
 
       {/* New Folder Modal */}
-      <Modal 
-        isOpen={isFolderModalOpen} 
-        onClose={() => setFolderModalOpen(false)} 
+      <Modal
+        isOpen={isFolderModalOpen}
+        onClose={() => setFolderModalOpen(false)}
         title="Create New Folder"
         footer={
           <>
@@ -505,8 +444,8 @@ service cloud.firestore {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Folder Name</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="e.g. Finances"
               value={newFolderName}
@@ -518,15 +457,15 @@ service cloud.firestore {
       </Modal>
 
       {/* Upload Modal */}
-      <Modal 
-        isOpen={isUploadModalOpen} 
-        onClose={() => !isUploading && setUploadModalOpen(false)} 
+      <Modal
+        isOpen={isUploadModalOpen}
+        onClose={() => !isUploading && setUploadModalOpen(false)}
         title="Upload File"
       >
         <div className="space-y-4">
           <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer relative">
-            <input 
-              type="file" 
+            <input
+              type="file"
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               onChange={(e) => e.target.files && setSelectedFile(e.target.files[0])}
               disabled={isUploading}
@@ -576,28 +515,28 @@ service cloud.firestore {
           )}
 
           <div className="flex justify-end gap-3 mt-4">
-             <button 
-               onClick={() => setUploadModalOpen(false)} 
-               disabled={isUploading}
-               className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50"
-             >
-               Cancel
-             </button>
-             <button 
-               onClick={handleUploadFile} 
-               disabled={!selectedFile || isUploading}
-               className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-             >
-               {isUploading ? 'Uploading...' : 'Upload File'}
-             </button>
+            <button
+              onClick={() => setUploadModalOpen(false)}
+              disabled={isUploading}
+              className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleUploadFile}
+              disabled={!selectedFile || isUploading}
+              className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isUploading ? 'Uploading...' : 'Upload File'}
+            </button>
           </div>
         </div>
       </Modal>
 
       {/* Upgrade Modal */}
-      <Modal 
-        isOpen={isUpgradeModalOpen} 
-        onClose={() => setUpgradeModalOpen(false)} 
+      <Modal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
         title="Upgrade Plan"
         footer={
           <button onClick={() => setUpgradeModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Close</button>
@@ -609,7 +548,7 @@ service cloud.firestore {
           </div>
           <h4 className="text-xl font-bold text-gray-900 mb-2">Limit Reached</h4>
           <p className="text-gray-600 mb-6">
-            You have reached the 5-file limit on the Free Plan. Upgrade to Pro to unlock unlimited storage and team features.
+            You have reached the {MAX_FILES}-file limit on the Free Plan. Upgrade to Pro to unlock unlimited storage and team features.
           </p>
           <button className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5">
             Upgrade to Pro - $9/mo

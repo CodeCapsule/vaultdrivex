@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { User } from '@supabase/supabase-js';
+import { supabase } from '../supabase';
 import { Note } from '../types';
 import { Plus, StickyNote, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Modal } from './Modal';
-import { User } from 'firebase/auth';
 
 interface MyNotesProps {
-    user: User;
+  user: User;
 }
 
 export const MyNotes: React.FC<MyNotesProps> = ({ user }) => {
@@ -20,65 +19,76 @@ export const MyNotes: React.FC<MyNotesProps> = ({ user }) => {
   const [saving, setSaving] = useState(false);
   const [retryTrigger, setRetryTrigger] = useState(0);
 
-  const isOfflineDemo = user.uid === 'offline-demo';
+  const isOfflineDemo = user.id === 'offline-demo';
 
-  useEffect(() => {
+  const fetchNotes = async () => {
     setLoading(true);
     setError(null);
 
     if (isOfflineDemo) {
-        setNotes([
-            { id: '1', title: 'Project Ideas', content: '1. New AI feature\n2. Mobile app redesign\n3. Marketing campaign Q4', createdAt: new Date() },
-            { id: '2', title: 'Meeting Notes', content: 'Discussed timeline for launch. Everyone agreed on the 15th.', createdAt: new Date() }
-        ]);
-        setLoading(false);
-        return;
+      setNotes([
+        { id: '1', user_id: 'offline-demo', title: 'Project Ideas', content: '1. New AI feature\n2. Mobile app redesign\n3. Marketing campaign Q4', created_at: new Date().toISOString() },
+        { id: '2', user_id: 'offline-demo', title: 'Meeting Notes', content: 'Discussed timeline for launch. Everyone agreed on the 15th.', created_at: new Date().toISOString() }
+      ]);
+      setLoading(false);
+      return;
     }
 
-    const q = query(collection(db, `users/${user.uid}/notes`), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setNotes(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Note)));
-      setLoading(false);
-      setError(null);
-    }, (err) => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (fetchError) throw fetchError;
+      setNotes(data || []);
+    } catch (err: any) {
       console.error(err);
-      setError("Failed to load notes. " + err.message);
+      setError("Failed to load notes. " + (err.message || ''));
+    } finally {
       setLoading(false);
-    });
-    return () => unsubscribe();
+    }
+  };
+
+  useEffect(() => {
+    fetchNotes();
   }, [user, retryTrigger, isOfflineDemo]);
 
   const handleSave = async () => {
     if (!title.trim()) return;
     setSaving(true);
-    
-    if (isOfflineDemo) {
-        const newNote = {
-            id: Math.random().toString(),
-            title,
-            content,
-            createdAt: new Date()
-        };
-        setNotes(prev => [newNote, ...prev]);
-        setTitle('');
-        setContent('');
-        setIsModalOpen(false);
-        setSaving(false);
-        return;
-    }
 
-    try {
-      await addDoc(collection(db, `users/${user.uid}/notes`), {
+    if (isOfflineDemo) {
+      const newNote: Note = {
+        id: Math.random().toString(),
+        user_id: 'offline-demo',
         title,
         content,
-        createdAt: serverTimestamp()
-      });
+        created_at: new Date().toISOString()
+      };
+      setNotes(prev => [newNote, ...prev]);
       setTitle('');
       setContent('');
       setIsModalOpen(false);
-    } catch (e) {
+      setSaving(false);
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('notes').insert({
+        user_id: user.id,
+        title,
+        content
+      });
+      if (error) throw error;
+      setTitle('');
+      setContent('');
+      setIsModalOpen(false);
+      fetchNotes(); // Refresh
+    } catch (e: any) {
       console.error(e);
-      alert("Failed to save note");
+      alert("Failed to save note: " + (e.message || ''));
     } finally {
       setSaving(false);
     }
@@ -86,15 +96,17 @@ export const MyNotes: React.FC<MyNotesProps> = ({ user }) => {
 
   const handleDelete = async (id: string) => {
     if (isOfflineDemo) {
-        setNotes(prev => prev.filter(n => n.id !== id));
-        return;
+      setNotes(prev => prev.filter(n => n.id !== id));
+      return;
     }
-    
+
     try {
-      await deleteDoc(doc(db, `users/${user.uid}/notes`, id));
-    } catch (e) {
+      const { error } = await supabase.from('notes').delete().eq('id', id);
+      if (error) throw error;
+      fetchNotes(); // Refresh
+    } catch (e: any) {
       console.error(e);
-      alert("Failed to delete note");
+      alert("Failed to delete note: " + (e.message || ''));
     }
   };
 
@@ -106,7 +118,7 @@ export const MyNotes: React.FC<MyNotesProps> = ({ user }) => {
         </div>
         <h3 className="text-lg font-bold text-red-800">Connection Error</h3>
         <p className="text-red-700 max-w-md mb-2">{error}</p>
-        <button 
+        <button
           onClick={() => setRetryTrigger(c => c + 1)}
           className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
         >
@@ -124,7 +136,7 @@ export const MyNotes: React.FC<MyNotesProps> = ({ user }) => {
           <h2 className="text-2xl font-bold text-gray-800">My Notes</h2>
           <p className="text-sm text-gray-500 mt-1">Capture ideas and important details.</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsModalOpen(true)}
           className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
         >
@@ -149,7 +161,7 @@ export const MyNotes: React.FC<MyNotesProps> = ({ user }) => {
             <div key={note.id} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow group flex flex-col h-64">
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-lg font-semibold text-gray-800 line-clamp-1">{note.title}</h3>
-                <button 
+                <button
                   onClick={() => handleDelete(note.id)}
                   className="text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                 >
@@ -173,15 +185,15 @@ export const MyNotes: React.FC<MyNotesProps> = ({ user }) => {
         title="Create Note"
         footer={
           <>
-             <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
-             <button onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Save Note</button>
+            <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Save Note</button>
           </>
         }
       >
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-            <input 
+            <input
               value={title}
               onChange={e => setTitle(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -191,7 +203,7 @@ export const MyNotes: React.FC<MyNotesProps> = ({ user }) => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-            <textarea 
+            <textarea
               value={content}
               onChange={e => setContent(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none h-32 resize-none"
