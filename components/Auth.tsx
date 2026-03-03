@@ -18,6 +18,7 @@ interface AuthProps {
   onNavigateToSupport?: () => void;
   onNavigateToPrivacy?: () => void;
   onNavigateToTerms?: () => void;
+  onNavigateToCheckout?: (plan: { name: string; price: string; billingCycle: 'monthly' | 'yearly' }) => void;
   autoOpenModal?: boolean;
   onModalClose?: () => void;
   onRunOfflineDemo?: () => void;
