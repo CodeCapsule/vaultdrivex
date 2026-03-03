@@ -12,6 +12,7 @@ interface PricingPageProps {
   onNavigateToSupport: () => void;
   onNavigateToPrivacy: () => void;
   onNavigateToTerms: () => void;
+  onNavigateToCheckout: (plan: { name: string; price: string; billingCycle: 'monthly' | 'yearly' }) => void;
   onAuthModalOpen: () => void;
 }
 
@@ -24,6 +25,7 @@ export const PricingPage: React.FC<PricingPageProps> = ({
   onNavigateToSupport,
   onNavigateToPrivacy,
   onNavigateToTerms,
+  onNavigateToCheckout,
   onAuthModalOpen
 }) => {
   const [isYearly, setIsYearly] = useState(false);
@@ -155,7 +157,11 @@ export const PricingPage: React.FC<PricingPageProps> = ({
             </div>
 
             <button
-              onClick={onAuthModalOpen}
+              onClick={() => onNavigateToCheckout({
+                name: 'Pro',
+                price: isYearly ? '$108/yr' : '$12/mo',
+                billingCycle: isYearly ? 'yearly' : 'monthly'
+              })}
               className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-900/20 transition-colors mb-8"
             >
               Start 14-Day Trial
@@ -181,7 +187,14 @@ export const PricingPage: React.FC<PricingPageProps> = ({
               {isYearly && <p className="text-xs text-emerald-600 font-medium animate-in fade-in slide-in-from-top-1">Billed yearly</p>}
             </div>
 
-            <button className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl font-bold transition-colors mb-8">
+            <button
+              onClick={() => onNavigateToCheckout({
+                name: 'Business',
+                price: isYearly ? '$276/yr' : '$29/mo',
+                billingCycle: isYearly ? 'yearly' : 'monthly'
+              })}
+              className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl font-bold transition-colors mb-8"
+            >
               Contact Sales
             </button>
             <div className="space-y-4">

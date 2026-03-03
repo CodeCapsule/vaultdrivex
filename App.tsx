@@ -9,8 +9,9 @@ import { PricingPage } from './components/PricingPage';
 import { SupportPage } from './components/SupportPage';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
+import { CheckoutPage } from './components/CheckoutPage';
 
-type View = 'landing' | 'dashboard' | 'product' | 'solutions' | 'pricing' | 'support' | 'privacy' | 'terms';
+type View = 'landing' | 'dashboard' | 'product' | 'solutions' | 'pricing' | 'support' | 'privacy' | 'terms' | 'checkout';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -18,6 +19,7 @@ const App: React.FC = () => {
   const [view, setView] = useState<View>('landing');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<{ name: string; price: string; billingCycle: 'monthly' | 'yearly' } | null>(null);
 
   useEffect(() => {
     // Get initial session
@@ -127,6 +129,23 @@ const App: React.FC = () => {
     );
   }
 
+  if (view === 'checkout' && selectedPlan) {
+    return (
+      <CheckoutPage
+        user={user}
+        planName={selectedPlan.name}
+        price={selectedPlan.price}
+        billingCycle={selectedPlan.billingCycle}
+        onNavigateToHome={() => setView('landing')}
+        onNavigateToPricing={() => setView('pricing')}
+        onNavigateToSuccess={() => {
+          alert('Payment Successful!'); // Placeholder for success state
+          setView('dashboard');
+        }}
+      />
+    );
+  }
+
   if (view === 'pricing') {
     return (
       <PricingPage
@@ -138,6 +157,10 @@ const App: React.FC = () => {
         onNavigateToSupport={() => setView('support')}
         onNavigateToPrivacy={() => setView('privacy')}
         onNavigateToTerms={() => setView('terms')}
+        onNavigateToCheckout={(plan) => {
+          setSelectedPlan(plan);
+          setView('checkout');
+        }}
         onAuthModalOpen={() => {
           setView('landing');
           setShowAuthModal(true);
