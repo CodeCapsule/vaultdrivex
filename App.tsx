@@ -12,7 +12,8 @@ import { TermsOfService } from './components/TermsOfService';
 import { CheckoutPage } from './components/CheckoutPage';
 import { loadStripe } from '@stripe/stripe-js';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
+const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
 
 type View = 'landing' | 'dashboard' | 'product' | 'solutions' | 'pricing' | 'support' | 'privacy' | 'terms' | 'checkout';
 
