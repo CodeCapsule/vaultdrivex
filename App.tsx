@@ -10,6 +10,9 @@ import { SupportPage } from './components/SupportPage';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
 import { CheckoutPage } from './components/CheckoutPage';
+import { loadStripe } from '@stripe/stripe-js';
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 type View = 'landing' | 'dashboard' | 'product' | 'solutions' | 'pricing' | 'support' | 'privacy' | 'terms' | 'checkout';
 
