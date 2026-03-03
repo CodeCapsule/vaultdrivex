@@ -7,7 +7,8 @@ import { loadStripe } from '@stripe/stripe-js';
 import { StripePaymentForm } from './StripePaymentForm';
 
 // Initialize Stripe outside to avoid re-mounting
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
+const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
 
 interface CheckoutPageProps {
     user: User | null;
@@ -51,10 +52,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         },
     };
 
+    // Calculate amount for Stripe (in cents)
+    const amountInCents = parseInt(price.replace(/[^0-9]/g, '')) * 100 || 2900;
+
     const options = {
-        // In a real app, you would get this clientSecret from your server
-        // For the demo/frontend, we use a placeholder to mount the element
-        clientSecret: 'pi_placeholder_secret',
+        mode: 'payment' as const,
+        amount: amountInCents,
+        currency: 'usd',
         appearance,
     };
 
@@ -172,9 +176,15 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                     <div className="bg-white rounded-3xl p-8 md:p-10 border border-slate-200 shadow-2xl shadow-blue-900/10">
                         <h2 className="text-xl font-bold text-slate-900 mb-8">Secure Payment</h2>
 
-                        <Elements stripe={stripePromise} options={options}>
-                            <StripePaymentForm price={price} onSuccess={handlePaymentSuccess} />
-                        </Elements>
+                        {stripePromise ? (
+                            <Elements stripe={stripePromise} options={options}>
+                                <StripePaymentForm price={price} onSuccess={handlePaymentSuccess} />
+                            </Elements>
+                        ) : (
+                            <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                <p className="text-slate-500 text-sm">Stripe configuration missing. Please check your environment variables.</p>
+                            </div>
+                        )}
 
                         <p className="text-[10px] text-center text-slate-400 mt-8 leading-relaxed uppercase tracking-widest font-bold">
                             Secure 256-bit SSL Encrypted Connection
