@@ -164,26 +164,6 @@ export const TermsOfService: React.FC<TermsOfServiceProps> = ({
                         </p>
                     </section>
                 </div>
-
-                <div className="mt-20 pt-10 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
-                    <p className="text-slate-400 text-sm">
-                        &copy; {new Date().getFullYear()} VaultDrive Inc. All rights reserved.
-                    </p>
-                    <div className="flex gap-6">
-                        <button
-                            onClick={onNavigateToPrivacy}
-                            className="text-sm font-semibold text-slate-500 hover:text-blue-600 transition-colors"
-                        >
-                            Privacy Policy
-                        </button>
-                        <button
-                            onClick={onNavigateToHome}
-                            className="text-sm font-semibold text-slate-500 hover:text-blue-600 transition-colors"
-                        >
-                            Home
-                        </button>
-                    </div>
-                </div>
             </div>
 
             <footer className="bg-white border-t border-slate-200 py-12 px-6">
@@ -204,6 +184,6 @@ export const TermsOfService: React.FC<TermsOfServiceProps> = ({
                     </p>
                 </div>
             </footer>
-        </div>
+        </div >
     );
 };
