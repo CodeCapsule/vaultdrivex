@@ -232,6 +232,10 @@ const App: React.FC = () => {
       onNavigateToSupport={() => setView('support')}
       onNavigateToPrivacy={() => setView('privacy')}
       onNavigateToTerms={() => setView('terms')}
+      onNavigateToCheckout={(plan) => {
+        setSelectedPlan(plan);
+        setView('checkout');
+      }}
       autoOpenModal={showAuthModal}
       onModalClose={() => setShowAuthModal(false)}
       onRunOfflineDemo={handleOfflineDemo}

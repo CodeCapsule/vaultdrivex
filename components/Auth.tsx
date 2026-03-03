@@ -423,7 +423,16 @@ export const Auth: React.FC<AuthProps> = ({
                 <li className="flex items-center gap-3 text-sm text-slate-300"><Check size={16} className="text-emerald-400" /> Priority Support</li>
                 <li className="flex items-center gap-3 text-sm text-slate-300"><Check size={16} className="text-emerald-400" /> 30-day Version History</li>
               </ul>
-              <button onClick={() => setShowAuthModal(true)} className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-colors shadow-lg shadow-emerald-900/20">Get Started</button>
+              <button
+                onClick={() => onNavigateToCheckout({
+                  name: 'Pro',
+                  price: '$29/mo',
+                  billingCycle: 'monthly'
+                })}
+                className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-colors shadow-lg shadow-emerald-900/20"
+              >
+                Get Started
+              </button>
             </div>
             <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-2">Business</h3>
@@ -437,7 +446,16 @@ export const Auth: React.FC<AuthProps> = ({
                 <li className="flex items-center gap-3 text-sm text-slate-700"><Check size={16} className="text-blue-500" /> SSO & Audit Logs</li>
                 <li className="flex items-center gap-3 text-sm text-slate-700"><Check size={16} className="text-blue-500" /> 24/7 Dedicated Support</li>
               </ul>
-              <button className="w-full py-2.5 border border-slate-200 rounded-xl text-slate-700 font-semibold hover:border-slate-300 transition-colors">Contact Sales</button>
+              <button
+                onClick={() => onNavigateToCheckout({
+                  name: 'Business',
+                  price: '$99/mo',
+                  billingCycle: 'monthly'
+                })}
+                className="w-full py-2.5 border border-slate-200 rounded-xl text-slate-700 font-semibold hover:border-slate-300 transition-colors"
+              >
+                Contact Sales
+              </button>
             </div>
           </div>
         </div>
