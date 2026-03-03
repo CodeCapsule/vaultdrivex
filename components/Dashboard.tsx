@@ -16,6 +16,8 @@ interface DashboardProps {
   onNavigateToSolutions?: () => void;
   onNavigateToPricing?: () => void;
   onNavigateToSupport?: () => void;
+  onNavigateToPrivacy?: () => void;
+  onNavigateToTerms?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -23,7 +25,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onNavigateToProduct,
   onNavigateToSolutions,
   onNavigateToPricing,
-  onNavigateToSupport
+  onNavigateToSupport,
+  onNavigateToPrivacy,
+  onNavigateToTerms
 }) => {
   const [activeView, setActiveView] = useState<ViewState>(ViewState.OVERVIEW);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -92,8 +96,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     <button
       onClick={() => setActiveView(view)}
       className={`px-5 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${activeView === view
-          ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
-          : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
+        ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+        : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
         }`}
     >
       <Icon size={18} className={activeView === view ? 'text-blue-600' : 'text-gray-400'} />
@@ -153,8 +157,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">Dashboard</h1>
               <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${supabaseStatus === 'connected' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                  supabaseStatus === 'error' ? 'bg-red-50 text-red-600 border-red-100' :
-                    'bg-gray-50 text-gray-400 border-gray-100'
+                supabaseStatus === 'error' ? 'bg-red-50 text-red-600 border-red-100' :
+                  'bg-gray-50 text-gray-400 border-gray-100'
                 }`}>
                 <Database size={10} />
                 Supabase: {supabaseStatus}
@@ -200,6 +204,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   >
                     <UserIcon size={16} className="text-gray-400" />
                     Edit Profile
+                  </button>
+                  <button
+                    onClick={() => { setShowUserMenu(false); onNavigateToPrivacy?.(); }}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors font-medium flex items-center gap-2"
+                  >
+                    <Shield size={16} className="text-gray-400" />
+                    Privacy Policy
+                  </button>
+                  <button
+                    onClick={() => { setShowUserMenu(false); onNavigateToTerms?.(); }}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors font-medium flex items-center gap-2"
+                  >
+                    <FileText size={16} className="text-gray-400" />
+                    Terms of Service
                   </button>
                   <button className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors font-medium flex items-center gap-2">
                     <Settings size={16} className="text-gray-400" />

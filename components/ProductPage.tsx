@@ -10,6 +10,8 @@ interface ProductPageProps {
   onNavigateToSolutions: () => void;
   onNavigateToPricing: () => void;
   onNavigateToSupport: () => void;
+  onNavigateToPrivacy: () => void;
+  onNavigateToTerms: () => void;
   onAuthModalOpen: () => void;
 }
 
@@ -20,6 +22,8 @@ export const ProductPage: React.FC<ProductPageProps> = ({
   onNavigateToSolutions,
   onNavigateToPricing,
   onNavigateToSupport,
+  onNavigateToPrivacy,
+  onNavigateToTerms,
   onAuthModalOpen
 }) => {
   return (
@@ -253,6 +257,10 @@ export const ProductPage: React.FC<ProductPageProps> = ({
               <Shield size={20} fill="currentColor" />
             </div>
             <span className="font-bold text-xl text-slate-900 tracking-tight">VaultDrive</span>
+          </div>
+          <div className="flex items-center gap-6 text-sm">
+            <button onClick={onNavigateToPrivacy} className="text-slate-500 hover:text-blue-600 transition-colors">Privacy Policy</button>
+            <button onClick={onNavigateToTerms} className="text-slate-500 hover:text-blue-600 transition-colors">Terms of Service</button>
           </div>
           <p className="text-slate-500 text-sm">
             &copy; {new Date().getFullYear()} VaultDrive Inc.

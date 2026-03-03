@@ -16,6 +16,8 @@ interface AuthProps {
   onNavigateToSolutions?: () => void;
   onNavigateToPricing?: () => void;
   onNavigateToSupport?: () => void;
+  onNavigateToPrivacy?: () => void;
+  onNavigateToTerms?: () => void;
   autoOpenModal?: boolean;
   onModalClose?: () => void;
   onRunOfflineDemo?: () => void;
@@ -28,6 +30,8 @@ export const Auth: React.FC<AuthProps> = ({
   onNavigateToSolutions,
   onNavigateToPricing,
   onNavigateToSupport,
+  onNavigateToPrivacy,
+  onNavigateToTerms,
   autoOpenModal = false,
   onModalClose,
   onRunOfflineDemo
@@ -468,8 +472,8 @@ export const Auth: React.FC<AuthProps> = ({
             )}
           </div>
           <div className="flex items-center gap-8 text-sm font-medium text-slate-600">
-            <a href="#" className="hover:text-slate-900 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-slate-900 transition-colors">Terms</a>
+            <button onClick={onNavigateToPrivacy} className="hover:text-slate-900 transition-colors">Privacy</button>
+            <button onClick={onNavigateToTerms} className="hover:text-slate-900 transition-colors">Terms</button>
             <button onClick={onNavigateToPricing} className="hover:text-slate-900 transition-colors">Pricing</button>
             <button onClick={onNavigateToSupport} className="hover:text-slate-900 transition-colors">Support</button>
           </div>

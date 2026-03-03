@@ -7,8 +7,10 @@ import { ProductPage } from './components/ProductPage';
 import { SolutionsPage } from './components/SolutionsPage';
 import { PricingPage } from './components/PricingPage';
 import { SupportPage } from './components/SupportPage';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
+import { TermsOfService } from './components/TermsOfService';
 
-type View = 'landing' | 'dashboard' | 'product' | 'solutions' | 'pricing' | 'support';
+type View = 'landing' | 'dashboard' | 'product' | 'solutions' | 'pricing' | 'support' | 'privacy' | 'terms';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -83,10 +85,44 @@ const App: React.FC = () => {
         onNavigateToProduct={() => setView('product')}
         onNavigateToSolutions={() => setView('solutions')}
         onNavigateToPricing={() => setView('pricing')}
+        onNavigateToPrivacy={() => setView('privacy')}
+        onNavigateToTerms={() => setView('terms')}
         onAuthModalOpen={() => {
           setView('landing');
           setShowAuthModal(true);
         }}
+      />
+    );
+  }
+
+  if (view === 'privacy') {
+    return (
+      <PrivacyPolicy
+        user={user}
+        onNavigateToDashboard={() => setView('dashboard')}
+        onNavigateToHome={() => setView('landing')}
+        onNavigateToProduct={() => setView('product')}
+        onNavigateToSolutions={() => setView('solutions')}
+        onNavigateToPricing={() => setView('pricing')}
+        onNavigateToSupport={() => setView('support')}
+        onNavigateToTerms={() => setView('terms')}
+        onAuthModalOpen={handleAuthModalOpen}
+      />
+    );
+  }
+
+  if (view === 'terms') {
+    return (
+      <TermsOfService
+        user={user}
+        onNavigateToDashboard={() => setView('dashboard')}
+        onNavigateToHome={() => setView('landing')}
+        onNavigateToProduct={() => setView('product')}
+        onNavigateToSolutions={() => setView('solutions')}
+        onNavigateToPricing={() => setView('pricing')}
+        onNavigateToSupport={() => setView('support')}
+        onNavigateToPrivacy={() => setView('privacy')}
+        onAuthModalOpen={handleAuthModalOpen}
       />
     );
   }
@@ -100,6 +136,8 @@ const App: React.FC = () => {
         onNavigateToProduct={() => setView('product')}
         onNavigateToSolutions={() => setView('solutions')}
         onNavigateToSupport={() => setView('support')}
+        onNavigateToPrivacy={() => setView('privacy')}
+        onNavigateToTerms={() => setView('terms')}
         onAuthModalOpen={() => {
           setView('landing');
           setShowAuthModal(true);
@@ -117,6 +155,8 @@ const App: React.FC = () => {
         onNavigateToProduct={() => setView('product')}
         onNavigateToPricing={() => setView('pricing')}
         onNavigateToSupport={() => setView('support')}
+        onNavigateToPrivacy={() => setView('privacy')}
+        onNavigateToTerms={() => setView('terms')}
         onAuthModalOpen={() => {
           setView('landing');
           setShowAuthModal(true);
@@ -134,6 +174,8 @@ const App: React.FC = () => {
         onNavigateToSolutions={() => setView('solutions')}
         onNavigateToPricing={() => setView('pricing')}
         onNavigateToSupport={() => setView('support')}
+        onNavigateToPrivacy={() => setView('privacy')}
+        onNavigateToTerms={() => setView('terms')}
         onAuthModalOpen={() => {
           setView('landing');
           setShowAuthModal(true);
@@ -150,6 +192,8 @@ const App: React.FC = () => {
         onNavigateToSolutions={() => setView('solutions')}
         onNavigateToPricing={() => setView('pricing')}
         onNavigateToSupport={() => setView('support')}
+        onNavigateToPrivacy={() => setView('privacy')}
+        onNavigateToTerms={() => setView('terms')}
       />
     );
   }
@@ -163,6 +207,8 @@ const App: React.FC = () => {
       onNavigateToSolutions={() => setView('solutions')}
       onNavigateToPricing={() => setView('pricing')}
       onNavigateToSupport={() => setView('support')}
+      onNavigateToPrivacy={() => setView('privacy')}
+      onNavigateToTerms={() => setView('terms')}
       autoOpenModal={showAuthModal}
       onModalClose={() => setShowAuthModal(false)}
       onRunOfflineDemo={handleOfflineDemo}
